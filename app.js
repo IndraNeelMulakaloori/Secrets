@@ -14,6 +14,12 @@ app.set('view engine','ejs');
 
 mongoose.connect('mongodb://localhost:27017/userdb');
 
+const userSchema = new mongoose.Schema({
+    email : String,
+    password : String
+});
+
+const User = new mongoose.model('user',userSchema);
 
 app.listen(port , function(request,response)
 {
