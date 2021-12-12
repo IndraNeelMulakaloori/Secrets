@@ -14,10 +14,10 @@ app.set('view engine','ejs');
 
 mongoose.connect('mongodb://localhost:27017/userdb');
 
-const userSchema = new mongoose.Schema({
+const userSchema = {
     email : String,
     password : String
-});
+};
 
 const User = new mongoose.model('user',userSchema);
 
@@ -42,4 +42,45 @@ app.get("/register",function(request,myServerResponse)
 {
      myServerResponse.render("register");
      
+});
+
+app.post("/register",function(request,myServerResponse){
+    const userName = request.body.username;
+    const userPass = request.body.password;
+    console.log(userName);
+    console.log(userPass);
+
+    const newUsr = new User({
+        email : userName,
+        password : userPass
+    });
+
+    newUsr.save(function(err){
+      if(err)
+      console.log(err);
+      else
+      myServerResponse.render("secrets");
+    });
+
+});
+
+app.post("/login",function(request,myServerResponse){
+    const userName = request.body.username;
+    const userPass = request.body.password;
+
+
+    console.log(userName);
+    console.log(userPass);
+    
+    User.findOne({email : userName},function(err,result){
+           if(err)
+           console.log(err);
+           if(result.password == userPass)
+           myServerResponse.render("secrets");
+           else
+           myServerResponse.send("OOPs wrong password");
+
+    });
+
+    
 });
