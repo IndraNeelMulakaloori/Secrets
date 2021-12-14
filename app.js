@@ -1,4 +1,5 @@
 //jshint esversion:6
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
@@ -24,11 +25,10 @@ const userSchema = new mongoose.Schema({
 
 //Using a secret random string to encrypt the password of userDB using AES-256-CBC encryption.
 //.For more info : https://www.npmjs.com/package/mongoose-encryption
-const secret = "Thisisasecretstring";
 //plugins the encrypt function by using the secret string.
 //encryptedFields option is used to encrypt certain fields only.
 //Save-encrypt find-decrypt
-userSchema.plugin(encrypt,{secret : secret, encryptedFields: ["password"]});
+userSchema.plugin(encrypt,{secret : process.env.SECRET, encryptedFields: ["password"]});
 
 
 const User = new mongoose.model('user',userSchema);
