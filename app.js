@@ -3,6 +3,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
+const encrypt = require('mongoose-encryption');
 
 const app = express();
 const port = 3000;
@@ -14,12 +15,26 @@ app.set('view engine','ejs');
 
 mongoose.connect('mongodb://localhost:27017/userdb');
 
-const userSchema = {
+const userSchema = new mongoose.Schema({
     email : String,
     password : String
-};
+});
+
+
+
+//Using a secret random string to encrypt the password of userDB using AES-256-CBC encryption.
+//.For more info : https://www.npmjs.com/package/mongoose-encryption
+const secret = "Thisisasecretstring";
+//plugins the encrypt function by using the secret string.
+//encryptedFields option is used to encrypt certain fields only.
+//Save-encrypt find-decrypt
+userSchema.plugin(encrypt,{secret : secret, encryptedFields: ["password"]});
+
 
 const User = new mongoose.model('user',userSchema);
+
+
+
 
 app.listen(port , function(request,response)
 {
@@ -47,8 +62,7 @@ app.get("/register",function(request,myServerResponse)
 app.post("/register",function(request,myServerResponse){
     const userName = request.body.username;
     const userPass = request.body.password;
-    console.log(userName);
-    console.log(userPass);
+   
 
     const newUsr = new User({
         email : userName,
@@ -69,9 +83,8 @@ app.post("/login",function(request,myServerResponse){
     const userPass = request.body.password;
 
 
-    console.log(userName);
-    console.log(userPass);
-    
+   
+
     User.findOne({email : userName},function(err,result){
            if(err)
            console.log(err);
@@ -82,5 +95,5 @@ app.post("/login",function(request,myServerResponse){
 
     });
 
-    
+      
 });
