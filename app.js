@@ -1,10 +1,14 @@
 //jshint esversion:6
+//L-2 : Encryption
 require('dotenv').config();
+const mongoose = require('mongoose');
+const encrypt = require('mongoose-encryption');
 const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
-const mongoose = require('mongoose');
-const encrypt = require('mongoose-encryption');
+//L-3 Hashing
+const sha512 = require('js-sha512');
+
 
 const app = express();
 const port = 3000;
@@ -61,7 +65,8 @@ app.get("/register",function(request,myServerResponse)
 
 app.post("/register",function(request,myServerResponse){
     const userName = request.body.username;
-    const userPass = request.body.password;
+    const userPass = sha512(request.body.password);
+    console.log(userPass);
    
 
     const newUsr = new User({
@@ -80,9 +85,9 @@ app.post("/register",function(request,myServerResponse){
 
 app.post("/login",function(request,myServerResponse){
     const userName = request.body.username;
-    const userPass = request.body.password;
+    const userPass = sha512(request.body.password);
 
-
+    console.log(userPass);
    
 
     User.findOne({email : userName},function(err,result){
@@ -97,3 +102,4 @@ app.post("/login",function(request,myServerResponse){
 
       
 });
+
