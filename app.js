@@ -8,7 +8,9 @@ const bodyParser = require('body-parser');
 const ejs = require('ejs');
 //L-3 Hashing
 const sha512 = require('js-sha512');
-
+//L-4 hashing + Salting
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 const app = express();
 const port = 3000;
@@ -32,7 +34,7 @@ const userSchema = new mongoose.Schema({
 //plugins the encrypt function by using the secret string.
 //encryptedFields option is used to encrypt certain fields only.
 //Save-encrypt find-decrypt
-userSchema.plugin(encrypt,{secret : process.env.SECRET, encryptedFields: ["password"]});
+// userSchema.plugin(encrypt,{secret : process.env.SECRET, encryptedFields: ["password"]});
 
 
 const User = new mongoose.model('user',userSchema);
@@ -64,37 +66,48 @@ app.get("/register",function(request,myServerResponse)
 });
 
 app.post("/register",function(request,myServerResponse){
-    const userName = request.body.username;
-    const userPass = sha512(request.body.password);
-    console.log(userPass);
+   //Passing the password into the hash function and salting.
+   //Storing the shash in DB
+    bcrypt.hash(request.body.password,saltRounds,function(err,hash){
+        const newUsr = new User({
+            email : request.body.username,
+            password : hash
+        });
+        newUsr.save(function(err){
+            if(err)
+            console.log(err);
+            else
+            myServerResponse.render("secrets");
+          });
+    });
    
 
-    const newUsr = new User({
-        email : userName,
-        password : userPass
-    });
+   
 
-    newUsr.save(function(err){
-      if(err)
-      console.log(err);
-      else
-      myServerResponse.render("secrets");
-    });
+   
 
 });
 
 app.post("/login",function(request,myServerResponse){
     const userName = request.body.username;
-    const userPass = sha512(request.body.password);
+    const userPass = request.body.password;
 
     console.log(userPass);
    
 
-    User.findOne({email : userName},function(err,result){
+    User.findOne({email : userName},function(err,foundUser){
            if(err)
            console.log(err);
-           if(result.password == userPass)
-           myServerResponse.render("secrets");
+           //Compare the passwords stored in DB using bcrypt.compare
+         if(foundUser)
+         {
+                 bcrypt.compare(userPass,foundUser.password,function(err,result){
+                            if(result)
+                            myServerResponse.render("secrets");
+                            else 
+                            console.log(err);
+                 });
+         }
            else
            myServerResponse.send("OOPs wrong password");
 
