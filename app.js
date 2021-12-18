@@ -46,7 +46,8 @@ mongoose.connect('mongodb://localhost:27017/userdb');
 const userSchema = new mongoose.Schema({
     email : String,
     password : String,
-    googleId:String
+    googleId: String,
+    secret : [String]
 });
 
 //Plugin Passport Local Mongoose
@@ -86,7 +87,6 @@ passport.use(new GoogleStrategy({
   function(accessToken, refreshToken, profile, cb) {
       //This is a Facebook ID method rather than mongoose method
       //To find the user in our DB or create the user and store in userDb
-      console.log(profile);
     User.findOrCreate({ googleId: profile.id }, function (err, user) {
       return cb(err, user);
     });
@@ -133,12 +133,17 @@ app.get("/register",function(request,myServerResponse)
 });
 
 app.get("/secrets",function(request,myServerResponse){
-    //Here the user is authenticated i.e user is logged in to the session the secrets page is rendered
-   if(request.isAuthenticated())
-   myServerResponse.render("secrets");
-   else 
-   //Else the user is redirected to login page
-   myServerResponse.redirect("/login");
+    User.find({secret : {$ne : null}},function(err,foundUsers){
+              if(err)
+              console.log(err);
+              else 
+              {
+                  if(foundUsers){
+                      console.log(foundUsers);
+                      myServerResponse.render("secrets",{secretsArray : foundUsers});
+                  }
+              }
+    });
 
 });
 
@@ -190,6 +195,27 @@ app.post("/login",function(request,myServerResponse){
       
 });
 
+
+app.get("/submit",function(request,myServerResponse){
+    if(request.isAuthenticated())
+    myServerResponse.render("submit");
+    else 
+    myServerResponse.redirect("/login");
+});
+
+app.post("/submit",function(request,myServerResponse){
+      const submittedSecret = request.body.secret;
+      const userprofile = request.user.id;
+
+    User.findByIdAndUpdate(userprofile,{$push : {secret : submittedSecret}},function(err,foundUser){
+               if(err)
+               console.log(err);
+               else if(foundUser){
+                   console.log("Updated Succesfully");
+                   myServerResponse.redirect("/secrets");
+               }
+    });
+});
 
 app.get("/logout",function(request,myServerResponse){
     //Log-out off the session 
