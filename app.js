@@ -1,6 +1,6 @@
-//jshint esversion:6
+//jshint esversion:8
 //L-2 : Encryption
-// require('dotenv').config();
+require('dotenv').config();
 const mongoose = require('mongoose');
 // const encrypt = require('mongoose-encryption');
 const express = require('express');
@@ -17,7 +17,9 @@ const session = require('express-session');
 const passport = require('passport');
 const passportLocalMongoose = require('passport-local-mongoose');
 
-
+//L-6 OAuth using Google OAuth2.0
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const findOrCreate = require('mongoose-findorcreate');
 
 const app = express();
 const port = 3000;
@@ -40,24 +42,56 @@ app.use(passport.session());
 
 mongoose.connect('mongodb://localhost:27017/userdb');
 
+//GoogleId is added to Schema.
 const userSchema = new mongoose.Schema({
     email : String,
-    password : String
+    password : String,
+    googleId:String
 });
 
 //Plugin Passport Local Mongoose
 userSchema.plugin(passportLocalMongoose);
 
+//Plugin FOr findorCreate Method
+userSchema.plugin(findOrCreate);
+
 
 const User = new mongoose.model('user',userSchema);
 
+//Same implementation for any strategy-i.e local or Oauth
 //Use the Strategy on the user i.e email and password 
 passport.use(User.createStrategy());
-//Serialize -creates the the cookie
-passport.serializeUser(User.serializeUser());
-//and deserialize - Deletes the cookie
-passport.deserializeUser(User.deserializeUser());
 
+//Serialize -creates the the cookie
+passport.serializeUser(function(user, done) {
+    done(null, user.id);
+  });
+
+//and deserialize - Deletes the cookie
+passport.deserializeUser(function(id, done) {
+User.findById(id, function(err, user) {
+    done(err, user);
+  });
+});
+  
+
+
+
+//Implementing the google OAuth2.0 strategy
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+      //This is a Facebook ID method rather than mongoose method
+      //To find the user in our DB or create the user and store in userDb
+      console.log(profile);
+    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
 
 app.listen(port , function(request,response)
 {
@@ -66,6 +100,9 @@ app.listen(port , function(request,response)
 
 app.get("/",function(request,myServerResponse)
 {
+    if(request.isAuthenticated())
+    myServerResponse.redirect("/secrets");
+    else 
      myServerResponse.render("home");
 
 });
@@ -75,6 +112,19 @@ app.get("/login",function(request,myServerResponse)
      myServerResponse.render("login");
      
 });
+//Routing to google Auth and tapping passport google strategy callback 
+//Authorizing or providing required redentials such as profile.id,email
+//passport.authenticate acts as a middleware of express route
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile'] }));
+
+//Authenticating the user 
+app.get('/auth/google/secrets', 
+passport.authenticate('google', { failureRedirect: '/login' }),
+function(request, myServerResponse) {
+  // Successful authentication, redirect secrets.
+  myServerResponse.redirect('/secrets');
+});  
 
 app.get("/register",function(request,myServerResponse)
 {
